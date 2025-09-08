@@ -24,7 +24,7 @@ export function ProductApp() {
   }
 
   useEffect(() => { load() }, [])
-    useEffect(() => { (async () => { await loadCart() })() }, [])
+  useEffect(() => { loadCart() }, [])
 
     const loadCart = async () => {
       try {
@@ -52,6 +52,13 @@ export function ProductApp() {
     if (!q) return products
     return products.filter(p => [p.name, p.description].filter(Boolean).some(v => v.toLowerCase().includes(q)))
   }, [products, query])
+
+  const [toasts, setToasts] = useState([])
+  const pushToast = (msg, tone = 'error') => {
+    const id = Date.now() + Math.random()
+    setToasts(t => [...t, { id, msg, tone }])
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3500)
+  }
 
   return (
     <div className="app-shell">
@@ -92,9 +99,10 @@ export function ProductApp() {
                 <ProductCard key={p.id} p={p} onOpen={open} onAdd={async () => {
                   try {
                     await addToCart(p.id)
-                    await Promise.all([load(), loadCart()]) // refresh products (stock) and cart
+                    await Promise.all([load(), loadCart()])
+                    pushToast('Added to cart', 'success')
                   } catch (e) {
-                    alert(e.message || 'Failed to add to cart')
+                    pushToast(e.message || 'Failed to add to cart')
                   }
                 }} />
               ))}
@@ -111,19 +119,22 @@ export function ProductApp() {
             await updateCartItem(productId, quantity)
           }
           await Promise.all([load(), loadCart()])
+          pushToast('Cart updated', 'success')
         } catch (e) {
-          alert(e.message || 'Cart update failed')
+          pushToast(e.message || 'Cart update failed')
         }
       }} onRemove={async (productId) => {
         try {
           await removeCartItem(productId)
           await Promise.all([load(), loadCart()])
+          pushToast('Removed from cart', 'success')
         } catch (e) {
-          alert(e.message || 'Remove failed')
+          pushToast(e.message || 'Remove failed')
         }
       }} />
 
       <ProductDialogs state={dialog} onClose={close} onChanged={async () => { close(); await load() }} />
+      <ToastHost toasts={toasts} />
     </div>
   )
 }
@@ -203,6 +214,16 @@ function CartPanel({ cart, loading, error, onReload, onChange, onRemove }) {
         <span>Total</span>
         <span>${total.toFixed(2)}</span>
       </div>
+    </div>
+  )
+}
+
+function ToastHost({ toasts }) {
+  return (
+    <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
+      {toasts.map(t => (
+        <div key={t.id} className={`px-3 py-2 rounded-md text-sm shadow font-medium border bg-white ${t.tone === 'success' ? 'border-green-300 text-green-700' : 'border-red-300 text-red-700'}`}>{t.msg}</div>
+      ))}
     </div>
   )
 }

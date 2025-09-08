@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import List
+from typing import List, Union
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,6 +50,11 @@ class CartItemResponse(BaseModel):
 
 class CartItemUpdate(BaseModel):
     quantity: int
+
+
+class StatusResponse(BaseModel):
+    status: str
+    product_id: int
 
 
 @asynccontextmanager
@@ -244,7 +249,7 @@ async def add_to_cart(product_id: int, db: AsyncSession = Depends(get_db)):
     }
 
 
-@app.put("/cart/{product_id}", response_model=CartItemResponse)
+@app.put("/cart/{product_id}", response_model=Union[CartItemResponse, StatusResponse])
 async def update_cart_item(
     product_id: int, payload: CartItemUpdate, db: AsyncSession = Depends(get_db)
 ):
@@ -296,16 +301,7 @@ async def update_cart_item(
     await db.commit()
 
     if new_qty == 0:
-        prod_res = await db.execute(select(Product).where(Product.id == product_id))
-        product = prod_res.scalar_one_or_none()
-        if product is None:
-            raise HTTPException(status_code=404, detail="Product not found")
-        return {
-            "id": 0,
-            "product_id": product_id,
-            "quantity": 0,
-            "product": product,
-        }
+        return {"status": "removed", "product_id": product_id}
 
     joined = await db.execute(
         select(
