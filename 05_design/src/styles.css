@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body { @apply font-body; }
+
+/* Layout */
+.app-shell { @apply min-h-screen flex flex-col; }
+.app-header { @apply bg-white border-b border-gray-200; }
+.app-header-inner { @apply max-w-7xl mx-auto px-6 py-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between; }
+.app-title { @apply font-display text-3xl font-semibold tracking-tight text-gray-900; }
+.app-actions { @apply flex items-center gap-3; }
+
+/* Buttons */
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-md font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2; }
+.btn-sm { @apply text-xs px-2.5 py-1.5; }
+.btn-md { @apply text-sm px-4 py-2; }
+.btn-lg { @apply text-base px-5 py-2.5; }
+.btn-primary { @apply btn btn-md bg-primary-600 text-white shadow hover:bg-primary-500 active:bg-primary-700; }
+.btn-secondary { @apply btn btn-md bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100; }
+.btn-danger { @apply btn btn-md bg-danger text-white shadow hover:bg-danger/90; }
+.btn-danger-icon { @apply inline-flex items-center justify-center rounded-md bg-danger text-white hover:bg-danger/90 active:bg-danger/95 p-1.5 shadow-sm transition; }
+.btn-dark { @apply btn btn-md bg-gray-900 text-white shadow hover:bg-gray-800 active:bg-black; }
+.btn-ghost { @apply inline-flex items-center justify-center rounded-md font-medium transition-all text-gray-600 border border-gray-300 bg-white hover:text-gray-900 hover:bg-gray-50 px-2 py-1 text-xs shadow-sm; }
+.btn-ghost-danger { @apply inline-flex items-center justify-center rounded-md font-medium transition-all text-danger border border-danger/30 bg-white hover:text-danger hover:bg-danger/5 px-2 py-1 text-xs shadow-sm; }
+.icon-btn { @apply inline-flex items-center justify-center rounded-md p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 transition; }
+
+/* Inputs */
+.input { @apply block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:ring-primary-500; }
+textarea.input { @apply resize-y; }
+.input-muted { @apply bg-gray-50 border-gray-300 focus:border-primary-500 focus:ring-primary-500; }
+
+/* Cards and surfaces */
+.card { @apply bg-surface rounded-xl shadow-card border border-gray-200 p-5 flex flex-col gap-4 relative; }
+.card-price { @apply absolute top-4 right-4 font-semibold text-primary-600 text-sm bg-primary-50 px-2 py-0.5 rounded-md shadow-sm; }
+.card-footer { @apply flex items-center justify-between gap-2 pt-2 mt-auto flex-wrap; }
+.card-title { @apply font-medium text-gray-900 text-base leading-tight; }
+.card-meta { @apply text-sm text-gray-500; }
+.badge { @apply inline-block rounded-full bg-primary-100 text-primary-700 px-2.5 py-0.5 text-xs font-semibold; }
+
+/* Table (desktop view) */
+.data-table-wrapper { @apply hidden lg:block; }
+.data-table { @apply w-full border-separate border-spacing-0; }
+.data-table thead th { @apply text-left text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50 px-4 py-2 border-b border-gray-200; }
+.data-table tbody tr { @apply bg-white hover:bg-gray-50 transition-colors; }
+.data-table tbody td { @apply px-4 py-3 text-sm text-gray-700 border-b border-gray-100 align-top; }
+.row-actions { @apply flex items-center gap-3 text-xs; }
+
+/* Mobile cards (shown below lg) */
+.cards-grid { @apply grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:hidden; }
+
+/* Modals */
+.modal-backdrop { @apply fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4; }
+.modal-panel { @apply bg-white rounded-xl shadow-elevated w-full max-w-xl p-6 relative; }
+.modal-title { @apply text-xl font-semibold text-gray-900; }
+
+/* Form layout */
+.form-grid { @apply grid gap-4; }
+.form-row-2 { @apply grid gap-4 md:grid-cols-2; }
+
+/* Utility */
+.truncate-2 { @apply line-clamp-2; }
+.field-error { @apply text-danger text-xs font-medium; }
+.detail-grid { @apply grid gap-6 md:grid-cols-2; }
+.detail-label { @apply text-[11px] uppercase tracking-wide font-semibold text-gray-500; }
+
+/* Animations */
+@keyframes fadeIn { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform: translateY(0);} }
+.fade-in { animation: fadeIn 180ms ease-out; }
