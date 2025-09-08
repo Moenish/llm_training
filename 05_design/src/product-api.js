@@ -26,3 +26,24 @@ export async function fetchProduct(id) {
   const { data } = await api.get(`/products/${id}`)
   return data
 }
+
+// Cart API
+export async function fetchCart() {
+  const { data } = await api.get('/cart/')
+  return data
+}
+
+export async function addToCart(productId) {
+  const { data } = await api.post(`/cart/${productId}`)
+  return data
+}
+
+export async function updateCartItem(productId, quantity) {
+  const { data } = await api.put(`/cart/${productId}`, { quantity })
+  return data
+}
+
+export async function removeCartItem(productId) {
+  const { data } = await api.delete(`/cart/${productId}`)
+  return data
+}

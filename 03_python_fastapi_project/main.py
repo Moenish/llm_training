@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import List
+from typing import List, Union
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import create_tables, get_db
-from models import Product
+from models import Product, CartItem
+from sqlalchemy import func, update, delete
 
 
 class ProductCreate(BaseModel):
@@ -35,6 +36,25 @@ class ProductResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CartItemResponse(BaseModel):
+    id: int
+    product_id: int
+    quantity: int
+    product: ProductResponse
+
+    class Config:
+        from_attributes = True
+
+
+class CartItemUpdate(BaseModel):
+    quantity: int
+
+
+class StatusResponse(BaseModel):
+    status: str
+    product_id: int
 
 
 @asynccontextmanager
@@ -127,3 +147,207 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# ------------------------- CART ENDPOINTS -------------------------
+
+
+@app.get("/cart/", response_model=List[CartItemResponse])
+async def get_cart(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(
+            CartItem.id,
+            CartItem.product_id,
+            CartItem.quantity,
+            Product.id.label("p_id"),
+            Product.name,
+            Product.price,
+            Product.description,
+            Product.stock,
+        ).join(Product, Product.id == CartItem.product_id)
+    )
+    rows = result.all()
+    return [
+        {
+            "id": r.id,
+            "product_id": r.product_id,
+            "quantity": r.quantity,
+            "product": {
+                "id": r.p_id,
+                "name": r.name,
+                "price": r.price,
+                "description": r.description,
+                "stock": r.stock,
+            },
+        }
+        for r in rows
+    ]
+
+
+@app.post("/cart/{product_id}", response_model=CartItemResponse)
+async def add_to_cart(product_id: int, db: AsyncSession = Depends(get_db)):
+    # Decrement stock atomically if available
+    stock_update = (
+        update(Product)
+        .where(Product.id == product_id, Product.stock > 0)
+        .values(stock=Product.stock - 1)
+        .returning(Product.id)
+    )
+    stock_result = await db.execute(stock_update)
+    if stock_result.first() is None:
+        # Verify existence separately
+        exists = await db.execute(select(Product.id).where(Product.id == product_id))
+        if exists.first() is None:
+            raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=400, detail="Out of stock")
+
+    # Increment or insert cart item
+    item_exists = await db.execute(
+        select(CartItem).where(CartItem.product_id == product_id)
+    )
+    ci = item_exists.scalar_one_or_none()
+    if ci is None:
+        ci = CartItem(product_id=product_id, quantity=1)
+        db.add(ci)
+    else:
+        await db.execute(
+            update(CartItem)
+            .where(CartItem.product_id == product_id)
+            .values(quantity=CartItem.quantity + 1)
+        )
+    await db.commit()
+
+    # Reload cart item & product for response
+    joined = await db.execute(
+        select(
+            CartItem.id,
+            CartItem.product_id,
+            CartItem.quantity,
+            Product.id.label("p_id"),
+            Product.name,
+            Product.price,
+            Product.description,
+            Product.stock,
+        )
+        .join(Product, Product.id == CartItem.product_id)
+        .where(CartItem.product_id == product_id)
+    )
+    row = joined.first()
+    if not row:
+        raise HTTPException(status_code=500, detail="Failed to load cart item")
+    return {
+        "id": row.id,
+        "product_id": row.product_id,
+        "quantity": row.quantity,
+        "product": {
+            "id": row.p_id,
+            "name": row.name,
+            "price": row.price,
+            "description": row.description,
+            "stock": row.stock,
+        },
+    }
+
+
+@app.put("/cart/{product_id}", response_model=Union[CartItemResponse, StatusResponse])
+async def update_cart_item(
+    product_id: int, payload: CartItemUpdate, db: AsyncSession = Depends(get_db)
+):
+    if payload.quantity < 0:
+        raise HTTPException(status_code=400, detail="Quantity must be >= 0")
+
+    item_res = await db.execute(
+        select(CartItem).where(CartItem.product_id == product_id)
+    )
+    cart_item = item_res.scalar_one_or_none()
+    if cart_item is None:
+        raise HTTPException(status_code=404, detail="Item not in cart")
+    # Fetch current quantity as scalar int to avoid typing issues with ORM attribute
+    qty_res = await db.execute(
+        select(CartItem.quantity).where(CartItem.product_id == product_id)
+    )
+    current_qty = qty_res.scalar_one()
+    new_qty = payload.quantity
+    diff = new_qty - current_qty
+
+    # If increasing quantity ensure stock
+    if diff > 0:
+        stock_update = (
+            update(Product)
+            .where(Product.id == product_id, Product.stock >= diff)
+            .values(stock=Product.stock - diff)
+            .returning(Product.id)
+        )
+        res = await db.execute(stock_update)
+        if res.first() is None:
+            raise HTTPException(status_code=400, detail="Not enough stock")
+    elif diff < 0:
+        # Return stock
+        await db.execute(
+            update(Product)
+            .where(Product.id == product_id)
+            .values(stock=Product.stock + (-diff))
+        )
+
+    if new_qty == 0:
+        await db.execute(delete(CartItem).where(CartItem.product_id == product_id))
+    else:
+        await db.execute(
+            update(CartItem)
+            .where(CartItem.product_id == product_id)
+            .values(quantity=new_qty)
+        )
+    await db.commit()
+
+    if new_qty == 0:
+        return {"status": "removed", "product_id": product_id}
+
+    joined = await db.execute(
+        select(
+            CartItem.id,
+            CartItem.product_id,
+            CartItem.quantity,
+            Product.id.label("p_id"),
+            Product.name,
+            Product.price,
+            Product.description,
+            Product.stock,
+        )
+        .join(Product, Product.id == CartItem.product_id)
+        .where(CartItem.product_id == product_id)
+    )
+    row = joined.first()
+    if not row:
+        raise HTTPException(status_code=500, detail="Failed to load updated cart item")
+    return {
+        "id": row.id,
+        "product_id": row.product_id,
+        "quantity": row.quantity,
+        "product": {
+            "id": row.p_id,
+            "name": row.name,
+            "price": row.price,
+            "description": row.description,
+            "stock": row.stock,
+        },
+    }
+
+
+@app.delete("/cart/{product_id}")
+async def remove_cart_item(product_id: int, db: AsyncSession = Depends(get_db)):
+    item_res = await db.execute(
+        select(CartItem).where(CartItem.product_id == product_id)
+    )
+    cart_item = item_res.scalar_one_or_none()
+    if cart_item is None:
+        raise HTTPException(status_code=404, detail="Item not in cart")
+    qty = cart_item.quantity
+    # Return stock then delete
+    await db.execute(
+        update(Product)
+        .where(Product.id == product_id)
+        .values(stock=Product.stock + qty)
+    )
+    await db.execute(delete(CartItem).where(CartItem.product_id == product_id))
+    await db.commit()
+    return {"status": "removed", "product_id": product_id}
