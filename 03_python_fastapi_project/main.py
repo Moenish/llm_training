@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import List, Union, cast
+from typing import List, Union
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -262,8 +262,11 @@ async def update_cart_item(
     cart_item = item_res.scalar_one_or_none()
     if cart_item is None:
         raise HTTPException(status_code=404, detail="Item not in cart")
-    # Use already-fetched instance quantity instead of redundant query
-    current_qty = cast(int, cart_item.quantity)
+    # Fetch current quantity as scalar int to avoid typing issues with ORM attribute
+    qty_res = await db.execute(
+        select(CartItem.quantity).where(CartItem.product_id == product_id)
+    )
+    current_qty = qty_res.scalar_one()
     new_qty = payload.quantity
     diff = new_qty - current_qty
 

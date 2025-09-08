@@ -55,7 +55,7 @@ export function ProductApp() {
 
   const [toasts, setToasts] = useState([])
   const pushToast = (msg, tone = 'error') => {
-    const id = Date.now() + Math.random()
+    const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
     setToasts(t => [...t, { id, msg, tone }])
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3500)
   }
@@ -140,6 +140,7 @@ export function ProductApp() {
 }
 
 function ProductCard({ p, onOpen, onAdd }) {
+  const isOutOfStock = p.stock <= 0
   return (
     <div className="card group">
       <div className="flex items-start gap-3 pr-2">
@@ -152,7 +153,7 @@ function ProductCard({ p, onOpen, onAdd }) {
         <div className="flex w-full items-center justify-between">
           <span className="font-semibold text-gray-900 text-sm">${p.price}</span>
           <span className="font-medium flex items-center gap-2">Stock: {p.stock}
-            <button disabled={p.stock <= 0} onClick={onAdd} className={`btn-icon-small ${p.stock <= 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-primary-50'}`} title={p.stock <= 0 ? 'Out of stock' : 'Add to cart'}>
+            <button disabled={isOutOfStock} onClick={onAdd} className={`btn-icon-small ${isOutOfStock ? 'opacity-30 cursor-not-allowed' : 'hover:bg-primary-50'}`} title={isOutOfStock ? 'Out of stock' : 'Add to cart'}>
               <PlusIcon className="h-4 w-4" />
             </button>
           </span>
