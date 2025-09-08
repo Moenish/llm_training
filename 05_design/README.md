@@ -31,6 +31,6 @@ The UI now supports a simple shopping cart backed by new FastAPI `/cart` endpoin
 ### Notes
 * Stock numbers update in product cards immediately after cart mutations.
 * All operations optimistic then revalidated by reloading products + cart in parallel.
-* Errors surface via alert dialogs (minimal handling – consider toast system as enhancement).
+* Errors surface via toast notifications in the bottom-right corner.
 
 

@@ -23,19 +23,19 @@ export function ProductApp() {
     }
   }
 
+  const loadCart = async () => {
+    try {
+      setCartLoading(true)
+      setCart(await fetchCart())
+    } catch (e) {
+      setCartError(e.message || 'Failed to load cart')
+    } finally {
+      setCartLoading(false)
+    }
+  }
+
   useEffect(() => { load() }, [])
   useEffect(() => { loadCart() }, [])
-
-    const loadCart = async () => {
-      try {
-        setCartLoading(true)
-        setCart(await fetchCart())
-      } catch (e) {
-        setCartError(e.message || 'Failed to load cart')
-      } finally {
-        setCartLoading(false)
-      }
-    }
 
   const open = (type, product) => setDialog({ type, product })
   const close = () => setDialog(null)
